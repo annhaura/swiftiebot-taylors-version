@@ -32,7 +32,7 @@ def load_data_and_init_db():
     Memuat data lagu dari URL publik dan menginisialisasi database vektor FAISS.
     Database akan dibangun ulang setiap kali aplikasi dimulai/di-refresh.
     """
-    csv_url = "https://raw.githubusercontent.com/annhaura/swiftiebot-taylors-version/main/data/taylor_swift_songs.csv"
+    csv_url = "https://raw.githubusercontent.com/annhaura/swiftiebot-taylors-version/main/taylor_swift_songs.csv"
     try:
         df = pd.read_csv(csv_url)
         # Pastikan kolom 'Lyrics' ada dan tangani NaN jika ada
