@@ -291,6 +291,58 @@ st.set_page_config(
     layout="centered"
 )
 
+# Styling SwiftieBot UI: background aesthetic + font + chat bubble
+st.markdown(
+    """
+    <style>
+    /* 🌅 Background Image */
+    body {
+        background-image: url('https://i.imgur.com/Wy8Tj3z.jpeg'); /* aesthetic pastel cloud background */
+        background-size: cover;
+        background-position: center;
+        background-attachment: fixed;
+    }
+
+    /* 🪞 Soft chat container background */
+    .stChatMessage {
+        background: rgba(255, 255, 255, 0.85);
+        padding: 12px;
+        border-radius: 1rem;
+        margin-bottom: 10px;
+        font-family: 'Georgia', serif;
+    }
+
+    /* 🎀 Global font + soft pink tones */
+    html, body, [class*="css"] {
+        font-family: 'Georgia', serif;
+        color: #333;
+    }
+
+    /* 📥 Chat input box */
+    input[type="text"] {
+        background-color: #fff0f5;
+        border: 1px solid #ffc0cb;
+        padding: 10px;
+        border-radius: 8px;
+        color: #222;
+    }
+
+    /* 🧊 Main content background */
+    .block-container {
+        padding-top: 2rem;
+        padding-bottom: 2rem;
+        background-color: rgba(255, 255, 255, 0.92);
+        border-radius: 1.2rem;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+    }
+
+    /* 🧚 Remove Streamlit footer & menu */
+    footer, header, .stDeployButton {visibility: hidden;}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
 # Judul & Caption
 st.markdown(
     """
