@@ -3,7 +3,7 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain.vectorstores import Chroma
+from langchain_community.vectorstores import FAISS 
 from langchain.docstore.document import Document
 from langchain.agents import AgentExecutor, create_tool_calling_agent, tool
 from langchain_core.prompts import ChatPromptTemplate
@@ -15,8 +15,6 @@ from langchain_core.messages import AIMessage, HumanMessage
 load_dotenv()
 
 # Ambil API Key dari Streamlit Secrets, atau minta input dari pengguna
-# Jika di-deploy di Streamlit Community Cloud, st.secrets.get("GOOGLE_API_KEY") akan membaca dari Secrets
-# Jika dijalankan secara lokal atau Secrets tidak ada, akan muncul text_input
 api_key = st.secrets.get("GOOGLE_API_KEY") or st.text_input("Masukkan **Google API Key** Anda:", type="password")
 
 # Hentikan aplikasi jika API Key belum dimasukkan
@@ -31,13 +29,10 @@ os.environ["GOOGLE_API_KEY"] = api_key
 @st.cache_resource
 def load_data_and_init_db():
     """
-    Memuat data lagu dari URL publik dan menginisialisasi atau memuat vector database ChromaDB.
-    Ini akan di-cache agar tidak perlu dimuat ulang setiap kali aplikasi berjalan.
+    Memuat data lagu dari URL publik dan menginisialisasi database vektor FAISS.
+    Database akan dibangun ulang setiap kali aplikasi dimulai/di-refresh.
     """
-    # GANTI URL INI dengan URL publik file CSV Anda!
-    # Contoh: https://raw.githubusercontent.com/username/repo_name/main/taylor_swift_songs.csv
-    csv_url = "https://raw.githubusercontent.com/annhaura/swiftiebot-taylors-version/main/data/taylor_swift_songs.csv"
-
+    csv_url = "https://raw.githubusercontent.com/username/repo_name/main/data/taylor_swift_songs.csv"
     try:
         df = pd.read_csv(csv_url)
         # Pastikan kolom 'Lyrics' ada dan tangani NaN jika ada
@@ -49,64 +44,51 @@ def load_data_and_init_db():
         st.error(f"Gagal memuat data dari URL: {csv_url}. Pastikan URL benar, bisa diakses publik, dan format CSV valid. Error: {e}")
         st.stop()
     
+    st.info("Membangun database vektor (ini mungkin butuh waktu tergantung ukuran data)...")
+    
     # Inisialisasi model embedding untuk mengubah teks menjadi vektor
     embeddings = GoogleGenerativeAIEmbeddings(model="models/embedding-001")
 
-    persist_directory = 'chroma_db' # Direktori untuk menyimpan ChromaDB
-    
-    # Periksa apakah vector database sudah ada
-    if not os.path.exists(persist_directory):
-        st.info("Membuat database vektor baru (ini mungkin butuh waktu)...")
-        documents = []
-        for index, row in df.iterrows():
-            lyrics = row['Lyrics'] if pd.notna(row['Lyrics']) else ""
-            
-            # Gabungkan semua informasi relevan, termasuk lirik, untuk konten dokumen
-            content = (
-                f"Judul Lagu: {row['Song Name']}. Album: {row['Album']}. Lirik: {lyrics}. "
-                f"Fitur Audio: Danceability {row['Danceability']:.2f}, Energy {row['Energy']:.2f}, "
-                f"Key {row['Key']}, Loudness {row['Loudness']:.2f}, Mode {row['Mode']}, "
-                f"Speechiness {row['Speechiness']:.2f}, Acousticness {row['Acousticness']:.2f}, "
-                f"Instrumentalness {row['Instrumentalness']:.2f}, Liveness {row['Liveness']:.2f}, "
-                f"Valence {row['Valence']:.2f}, Tempo {row['Tempo']:.2f} BPM, Duration_ms {row['Duration_ms']}."
-            )
-            
-            # Tambahkan semua metadata yang mungkin berguna
-            metadata = {
-                "song_name": row['Song Name'],
-                "album": row['Album'],
-                "danceability": row['Danceability'],
-                "energy": row['Energy'],
-                "key": row['Key'],
-                "loudness": row['Loudness'],
-                "mode": row['Mode'],
-                "speechiness": row['Speechiness'],
-                "acousticness": row['Acousticness'],
-                "instrumentalness": row['Instrumentalness'],
-                "liveness": row['Liveness'],
-                "valence": row['Valence'],
-                "tempo": row['Tempo'],
-                "duration_ms": row['Duration_ms'],
-                "lyrics": lyrics # Simpan lirik penuh di metadata juga
-            }
-            documents.append(Document(page_content=content, metadata=metadata))
+    documents = []
+    for index, row in df.iterrows():
+        lyrics = row['Lyrics']
         
-        # Buat ChromaDB dari dokumen
-        vectorstore = Chroma.from_documents(
-            documents=documents,
-            embedding=embeddings,
-            persist_directory=persist_directory
+        # Gabungkan semua informasi relevan, termasuk lirik, untuk konten dokumen
+        content = (
+            f"Judul Lagu: {row['Song Name']}. Album: {row['Album']}. Lirik: {lyrics}. "
+            f"Fitur Audio: Danceability {row['Danceability']:.2f}, Energy {row['Energy']:.2f}, "
+            f"Key {row['Key']}, Loudness {row['Loudness']:.2f}, Mode {row['Mode']}, "
+            f"Speechiness {row['Speechiness']:.2f}, Acousticness {row['Acousticness']:.2f}, "
+            f"Instrumentalness {row['Instrumentalness']:.2f}, Liveness {row['Liveness']:.2f}, "
+            f"Valence {row['Valence']:.2f}, Tempo {row['Tempo']:.2f} BPM, Duration_ms {row['Duration_ms']}."
         )
-        vectorstore.persist() # Simpan database ke disk
-        st.success("Database vektor berhasil dibuat!")
-    else:
-        st.info("Memuat database vektor yang sudah ada...")
-        # Muat ChromaDB yang sudah ada
-        vectorstore = Chroma(
-            persist_directory=persist_directory,
-            embedding_function=embeddings
-        )
-        st.success("Database vektor berhasil dimuat!")
+        
+        # Tambahkan semua metadata yang mungkin berguna
+        metadata = {
+            "song_name": row['Song Name'],
+            "album": row['Album'],
+            "danceability": row['Danceability'],
+            "energy": row['Energy'],
+            "key": row['Key'],
+            "loudness": row['Loudness'],
+            "mode": row['Mode'],
+            "speechiness": row['Speechiness'],
+            "acousticness": row['Acousticness'],
+            "instrumentalness": row['Instrumentalness'],
+            "liveness": row['Liveness'],
+            "valence": row['Valence'],
+            "tempo": row['Tempo'],
+            "duration_ms": row['Duration_ms'],
+            "lyrics": lyrics # Simpan lirik penuh di metadata juga
+        }
+        documents.append(Document(page_content=content, metadata=metadata))
+    
+    # Buat FAISS database dari dokumen
+    vectorstore = FAISS.from_documents(
+        documents=documents,
+        embedding=embeddings
+    )
+    st.success("Database vektor FAISS berhasil dibuat!")
     
     return df, vectorstore, embeddings
 
@@ -269,7 +251,7 @@ tools = [find_songs_by_criteria, get_song_details, get_songs_by_album, explain_s
 # --- Prompt untuk Agent ---
 prompt = ChatPromptTemplate.from_messages([
     ("system", """Kamu adalah SwiftieBot, chatbot pencari lagu Taylor Swift yang berpengetahuan luas, ramah, dan antusias.
-    Tujuanmu adalah membantu pengguna menemukan dan mempelajari tentang lagu-lagu Taylor Swift dengan semangat seorang Swiftie sejati.
+    Tujuanmu adalah membantumu menemukan dan mempelajari tentang lagu-lagu Taylor Swift dengan semangat seorang Swiftie sejati.
     Kamu memiliki akses ke data lengkap lagu Taylor Swift, termasuk lirik dan fitur audio.
     Kamu dapat:
     1. Mencari lagu berdasarkan tema, mood, kata kunci lirik, atau karakteristik audio.
