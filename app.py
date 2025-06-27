@@ -283,55 +283,63 @@ agent = create_tool_calling_agent(llm, tools, prompt)
 # Buat AgentExecutor (ini yang akan menjalankan agent dan tools)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
-# --- Antarmuka Pengguna Streamlit ---
-st.set_page_config(page_title="SwiftieBot", page_icon="💖")
-st.title("🎤 Your song finder... but make it Taylor's Version")
-st.caption(
-    "I don’t know about you, but I’m feelin’... ready to help you explore the world of Taylor Swift! 💫\n"
-    "From country curls to pop anthems to poetic heartbreaks — tanyakan apa saja 🎤✨"
+# --- UI Streamlit SwiftieBot ---
+
+st.set_page_config(
+    page_title="SwiftieBot 🎤",
+    page_icon="💖",
+    layout="centered"
 )
 
-# Inisialisasi riwayat obrolan di session state Streamlit
+# Judul & Caption
+st.markdown(
+    """
+    <h1 style="text-align: center; color: #d6336c;">🎤 Your song finder... but make it <i>Taylor’s Version</i></h1>
+    <p style="text-align: center; font-size: 16px; color: #555;">
+        I don’t know about you, but I’m feelin’... ready to help you explore the world of Taylor Swift! 💫<br>
+        From country curls to pop anthems to poetic heartbreaks — tanyakan apa saja 🎶✨
+    </p>
+    <hr>
+    """,
+    unsafe_allow_html=True
+)
+
+# Inisialisasi riwayat obrolan
 if "messages" not in st.session_state:
     st.session_state.messages = []
-# Inisialisasi riwayat obrolan untuk LangChain Agent
 if "chat_history" not in st.session_state:
     st.session_state.chat_history = []
 
-
-# Tampilkan pesan obrolan dari riwayat setiap kali aplikasi di-rerun
+# Tampilkan semua riwayat obrolan
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Reaksi terhadap input pengguna
+# Input pengguna
 if prompt_input := st.chat_input("Tanyakan sesuatu tentang lagu Taylor Swift..."):
-    # Tampilkan pesan pengguna di kontainer obrolan
     with st.chat_message("user"):
         st.markdown(prompt_input)
-    
-    # Tambahkan pesan pengguna ke riwayat obrolan Streamlit untuk ditampilkan
+
+    # Tambahkan ke riwayat
     st.session_state.messages.append({"role": "user", "content": prompt_input})
 
     with st.chat_message("assistant"):
         with st.spinner("SwiftieBot sedang mencari jawabannya untukmu..."):
             try:
-                # Panggil agent executor, berikan input dan chat_history
                 response = agent_executor.invoke({
                     "input": prompt_input,
-                    "chat_history": st.session_state.chat_history # Meneruskan riwayat obrolan
+                    "chat_history": st.session_state.chat_history
                 })
                 assistant_response = response["output"]
                 st.markdown(assistant_response)
-                
-                # Tambahkan pesan pengguna dan respons asisten ke riwayat obrolan LangChain (untuk konteks)
+
+                # Tambahkan ke riwayat
                 st.session_state.chat_history.append(HumanMessage(content=prompt_input))
                 st.session_state.chat_history.append(AIMessage(content=assistant_response))
-                
-                # Tambahkan respons asisten ke riwayat obrolan Streamlit untuk ditampilkan
                 st.session_state.messages.append({"role": "assistant", "content": assistant_response})
+
             except Exception as e:
-                # Tangani error jika terjadi
-                error_message = f"Maaf, sepertinya ada kesalahan saat mencari. Terjadi masalah: {e}. Bisakah Anda coba lagi dengan pertanyaan yang berbeda?"
+                error_message = f"Maaf, terjadi kesalahan saat mencari: `{e}`. Coba lagi nanti ya! 💔"
                 st.error(error_message)
                 st.session_state.messages.append({"role": "assistant", "content": error_message})
+
