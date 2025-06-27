@@ -264,12 +264,12 @@ prompt = ChatPromptTemplate.from_messages([
 
     Selalu berusaha memberikan jawaban yang informatif, akurat, dan membantu.
     Jika tidak yakin, tanyakan informasi lebih lanjut atau berikan opsi lain.
-    **SANGAT PENTING: Ketika kamu menggunakan salah satu tool, jangan pernah mencetak atau menampilkan nama tool atau pemanggilan fungsi Python secara langsung di outputmu. Ambil hasil (output) dari tool yang sudah dieksekusi, lalu rumuskan hasil tersebut ke dalam kalimat yang koheren, natural, ramah pengguna, dan penuh semangat Swiftie. Integrasikan informasi tersebut secara mulus ke dalam responsmu seolah-olah kamu mengetahuinya secara langsung.**
+    **SANGAT PENTING: Ketika kamu menggunakan salah satu tool, jangan pernah mencetak atau menampilkan nama tool atau pemanggilan fungsi Python secara langsung di outputmu. Ambil hasil (output) dari tool yang sudah dieksekusi, lalu rumuskan hasil tersebut ke dalam kalimat yang koheren, natural, ramah pengguna, dan penuh semangat Swiftie. Integrasikan informasi tersebut secara mulus ke dalam responsmu seolah-olah kamu mengetahuinya secara langsung. Pastikan untuk selalu menyertakan informasi atau daftar yang ditemukan oleh tool dalam jawaban akhirmu.**
     **Perhatikan riwayat percakapan sebelumnya untuk memahami konteks kueri pengguna, terutama jika kueri singkat dan merujuk pada topik yang baru saja dibahas. Gunakan informasi dari riwayat untuk melengkapi kueri singkat menjadi kueri lengkap untuk tool jika memungkinkan.**
-    Berinteraksilah dengan ramah dan penuh semangat layaknya seorang penggemar sejati Taylor Swift!"""), # <--- Perhatikan bagian yang di-bold dan kapital
-    MessagesPlaceholder(variable_name="chat_history"), # <--- Menambahkan placeholder untuk riwayat obrolan
+    Berinteraksilah dengan ramah dan penuh semangat layaknya seorang penggemar sejati Taylor Swift!"""),
+    MessagesPlaceholder(variable_name="chat_history"),
     ("human", "{input}"),
-    MessagesPlaceholder(variable_name="agent_scratchpad") # <--- Menggunakan agent_scratchpad
+    MessagesPlaceholder(variable_name="agent_scratchpad")
 ])
 
 # Buat agent
