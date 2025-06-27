@@ -3,11 +3,11 @@ import pandas as pd
 import os
 from dotenv import load_dotenv
 from langchain_google_genai import ChatGoogleGenerativeAI, GoogleGenerativeAIEmbeddings
-from langchain_community.vectorstores import FAISS 
+from langchain_community.vectorstores import FAISS # Import FAISS dari langchain_community
 from langchain.docstore.document import Document
 from langchain.agents import AgentExecutor, create_tool_calling_agent, tool
-from langchain_core.prompts import ChatPromptTemplate
-from langchain_core.messages import AIMessage, HumanMessage
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder # Import MessagesPlaceholder
+from langchain_core.messages import AIMessage, HumanMessage # Import AIMessage, HumanMessage
 
 # --- Konfigurasi Awal dan Input API Key ---
 
@@ -32,7 +32,9 @@ def load_data_and_init_db():
     Memuat data lagu dari URL publik dan menginisialisasi database vektor FAISS.
     Database akan dibangun ulang setiap kali aplikasi dimulai/di-refresh.
     """
-    csv_url = "https://raw.githubusercontent.com/annhaura/swiftiebot-taylors-version/main/taylor_swift_songs.csv"
+    # URL ini sudah disesuaikan dengan lokasi file Anda di GitHub
+    csv_url = "https://raw.githubusercontent.com/annhaura/swiftiebot-taylors-version/main/taylor_swift_songs.csv" 
+
     try:
         df = pd.read_csv(csv_url)
         # Pastikan kolom 'Lyrics' ada dan tangani NaN jika ada
@@ -262,9 +264,12 @@ prompt = ChatPromptTemplate.from_messages([
 
     Selalu berusaha memberikan jawaban yang informatif, akurat, dan membantu.
     Jika tidak yakin, tanyakan informasi lebih lanjut atau berikan opsi lain.
-    Berinteraksilah dengan ramah dan penuh semangat layaknya seorang penggemar sejati Taylor Swift!"""),
+    **SANGAT PENTING: Ketika kamu menggunakan salah satu tool, jangan pernah mencetak atau menampilkan nama tool atau pemanggilan fungsi Python secara langsung di outputmu. Ambil hasil (output) dari tool yang sudah dieksekusi, lalu rumuskan hasil tersebut ke dalam kalimat yang koheren, natural, ramah pengguna, dan penuh semangat Swiftie. Integrasikan informasi tersebut secara mulus ke dalam responsmu seolah-olah kamu mengetahuinya secara langsung.**
+    **Perhatikan riwayat percakapan sebelumnya untuk memahami konteks kueri pengguna, terutama jika kueri singkat dan merujuk pada topik yang baru saja dibahas. Gunakan informasi dari riwayat untuk melengkapi kueri singkat menjadi kueri lengkap untuk tool jika memungkinkan.**
+    Berinteraksilah dengan ramah dan penuh semangat layaknya seorang penggemar sejati Taylor Swift!"""), # <--- Perhatikan bagian yang di-bold dan kapital
+    MessagesPlaceholder(variable_name="chat_history"), # <--- Menambahkan placeholder untuk riwayat obrolan
     ("human", "{input}"),
-    ("placeholder", "{agent_scratchpad}")
+    MessagesPlaceholder(variable_name="agent_scratchpad") # <--- Menggunakan agent_scratchpad
 ])
 
 # Buat agent
@@ -274,13 +279,20 @@ agent = create_tool_calling_agent(llm, tools, prompt)
 agent_executor = AgentExecutor(agent=agent, tools=tools, verbose=True)
 
 # --- Antarmuka Pengguna Streamlit ---
-st.set_page_config(page_title="🎤 SwiftieBot (Taylor's Version)", page_icon="💖")
-st.title("🎤 SwiftieBot (Taylor's Version)")
-st.caption("Hai, Swiftie! Aku siap membantumu menjelajahi dunia musik Taylor Swift. Tanyakan apa saja!")
+st.set_page_config(page_title="SwiftieBot", page_icon="💖")
+st.title("🎤 Your song finder... but make it Taylor's Version")
+st.caption(
+    "I don’t know about you, but I’m feelin’... ready to help you explore the world of Taylor Swift! 💫\n"
+    "From country curls to pop anthems to poetic heartbreaks — tanyakan apa saja 🎤✨"
+)
 
 # Inisialisasi riwayat obrolan di session state Streamlit
 if "messages" not in st.session_state:
     st.session_state.messages = []
+# Inisialisasi riwayat obrolan untuk LangChain Agent
+if "chat_history" not in st.session_state:
+    st.session_state.chat_history = []
+
 
 # Tampilkan pesan obrolan dari riwayat setiap kali aplikasi di-rerun
 for message in st.session_state.messages:
@@ -293,17 +305,25 @@ if prompt_input := st.chat_input("Tanyakan sesuatu tentang lagu Taylor Swift..."
     with st.chat_message("user"):
         st.markdown(prompt_input)
     
-    # Tambahkan pesan pengguna ke riwayat obrolan
+    # Tambahkan pesan pengguna ke riwayat obrolan Streamlit untuk ditampilkan
     st.session_state.messages.append({"role": "user", "content": prompt_input})
 
     with st.chat_message("assistant"):
         with st.spinner("SwiftieBot sedang mencari jawabannya untukmu..."):
             try:
-                # Panggil agent executor untuk mendapatkan respons
-                response = agent_executor.invoke({"input": prompt_input})
+                # Panggil agent executor, berikan input dan chat_history
+                response = agent_executor.invoke({
+                    "input": prompt_input,
+                    "chat_history": st.session_state.chat_history # Meneruskan riwayat obrolan
+                })
                 assistant_response = response["output"]
                 st.markdown(assistant_response)
-                # Tambahkan respons asisten ke riwayat obrolan
+                
+                # Tambahkan pesan pengguna dan respons asisten ke riwayat obrolan LangChain (untuk konteks)
+                st.session_state.chat_history.append(HumanMessage(content=prompt_input))
+                st.session_state.chat_history.append(AIMessage(content=assistant_response))
+                
+                # Tambahkan respons asisten ke riwayat obrolan Streamlit untuk ditampilkan
                 st.session_state.messages.append({"role": "assistant", "content": assistant_response})
             except Exception as e:
                 # Tangani error jika terjadi
