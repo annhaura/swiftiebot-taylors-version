@@ -99,7 +99,7 @@ df_songs, vectorstore_db, embeddings_model = load_data_and_init_db()
 retriever = vectorstore_db.as_retriever() # Digunakan oleh tools untuk pencarian
 
 # --- Inisialisasi Model Bahasa Besar (LLM) ---
-llm = ChatGoogleGenerativeAI(model="gemini-1.5-flash", temperature=0.7)
+llm = ChatGoogleGenerativeAI(model="gemini-2.0-flash", temperature=0.7)
 
 # --- Definisi Tools untuk Agent ---
 
